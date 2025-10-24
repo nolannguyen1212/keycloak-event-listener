@@ -3,7 +3,13 @@ plugins {
 }
 
 group = 'org.example'
-version = '0.0.1-SNAPSHOT'
+version = '1.0.0'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
 
 repositories {
     mavenCentral()
@@ -15,12 +21,36 @@ dependencies {
     compileOnly 'org.keycloak:keycloak-server-spi-private:26.4.1'
     compileOnly 'org.keycloak:keycloak-services:26.4.1'
     compileOnly 'org.jboss.logging:jboss-logging:3.5.3.Final'
+
+    implementation 'org.apache.kafka:kafka-clients:3.9.1'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.3'
+}
+
+jar {
+    archiveBaseName.set('keycloak-event-listener')
+    archiveVersion.set(project.version as String)
+
+    from {
+        configurations.runtimeClasspath.collect {
+            it.isDirectory() ? it : zipTree(it)
+        }
+    }
+
+    exclude 'META-INF/*.SF'
+    exclude 'META-INF/*.DSA'
+    exclude 'META-INF/*.RSA'
+    exclude 'META-INF/MANIFEST.MF'
+
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+    manifest {
+        attributes(
+                'Implementation-Title': project.name,
+                'Implementation-Version': project.version
+        )
+    }
 }
 
 tasks.withType(JavaCompile).configureEach {
-    options.release = 21
-}
-
-test {
-    useJUnitPlatform()
+    options.encoding = 'UTF-8'
 }

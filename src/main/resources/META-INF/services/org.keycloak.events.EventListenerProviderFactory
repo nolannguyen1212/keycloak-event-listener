@@ -1,1 +1,1 @@
-org.example.event.providers.CustomEventListenerFactory
+org.example.event.providers.users.UserEventListenerFactory
