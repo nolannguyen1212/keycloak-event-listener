@@ -12,88 +12,82 @@ import org.keycloak.events.admin.AdminEvent;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.regex.Matcher;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 public class UserEventListenerProvider implements EventListenerProvider {
 
     private static final Logger log = Logger.getLogger(UserEventListenerProvider.class);
-    private static final Pattern USER_ID_PATTERN = Pattern.compile("/users/([^/]+)");
+    private static final Pattern USER_ID = Pattern.compile("/users/([^/]+)");
+    private static final ObjectMapper JSON = new ObjectMapper();
 
     private final KafkaProducer<String, String> producer;
-    private final ObjectMapper mapper;
     private final String topic;
+    private final Set<String> realms;
 
-    public UserEventListenerProvider(KafkaProducer<String, String> producer, String topic) {
+    public UserEventListenerProvider(KafkaProducer<String, String> producer, String topic, Set<String> realms) {
         this.producer = producer;
-        this.mapper = new ObjectMapper();
         this.topic = topic;
+        this.realms = realms;
     }
 
     @Override
     public void onEvent(Event event) {
-        if (UserEventTypes.isMonitored(event.getType())) {
-            sendToKafka(buildUserEvent(event), event.getUserId());
+        if (allowed(event.getRealmId()) && UserEventTypes.isMonitored(event.getType())) {
+            send(userEvent(event), event.getUserId());
         }
     }
 
     @Override
     public void onEvent(AdminEvent event, boolean includeRepresentation) {
-        if (AdminEventTypes.isMonitored(event.getResourceType(), event.getOperationType())) {
+        if (allowed(event.getRealmId()) && AdminEventTypes.isMonitored(event.getResourceType(), event.getOperationType())) {
             String userId = extractUserId(event.getResourcePath());
-            if (userId != null) {
-                sendToKafka(buildAdminEvent(event, userId), userId);
-            }
+            if (userId != null) send(adminEvent(event, userId), userId);
         }
     }
 
-    private Map<String, Object> buildUserEvent(Event event) {
+    private boolean allowed(String realm) {
+        return realms.isEmpty() || realms.contains(realm);
+    }
+
+    private Map<String, Object> userEvent(Event e) {
         Map<String, Object> data = new HashMap<>();
-        data.put("eventType", event.getType().name());
-        data.put("userId", event.getUserId());
-        data.put("username", event.getDetails() != null ? event.getDetails().get("username") : null);
-        data.put("realmId", event.getRealmId());
-        data.put("ipAddress", event.getIpAddress());
-        data.put("timestamp", event.getTime());
+        data.put("eventType", e.getType().name());
+        data.put("userId", e.getUserId());
+        data.put("username", e.getDetails() != null ? e.getDetails().get("username") : null);
+        data.put("realmId", e.getRealmId());
+        data.put("ipAddress", e.getIpAddress());
+        data.put("timestamp", e.getTime());
         return data;
     }
 
-    private Map<String, Object> buildAdminEvent(AdminEvent event, String userId) {
+    private Map<String, Object> adminEvent(AdminEvent e, String userId) {
         Map<String, Object> data = new HashMap<>();
-        data.put("eventType", "USER_" + event.getOperationType().name());
+        data.put("eventType", "USER_" + e.getOperationType().name());
         data.put("userId", userId);
-        data.put("realmId", event.getRealmId());
-        data.put("adminUserId", event.getAuthDetails() != null ? event.getAuthDetails().getUserId() : null);
-        data.put("timestamp", event.getTime());
+        data.put("realmId", e.getRealmId());
+        data.put("adminUserId", e.getAuthDetails() != null ? e.getAuthDetails().getUserId() : null);
+        data.put("timestamp", e.getTime());
         return data;
     }
 
-    private void sendToKafka(Map<String, Object> data, String key) {
+    private void send(Map<String, Object> data, String key) {
         try {
-            String json = mapper.writeValueAsString(data);
-            producer.send(new ProducerRecord<>(topic, key, json), (metadata, exception) -> {
-                if (exception != null) {
-                    log.errorf(exception, "Failed to send event to Kafka");
-                } else {
-                    log.debugf("Event sent successfully: %s", data.get("eventType"));
-                }
+            producer.send(new ProducerRecord<>(topic, key, JSON.writeValueAsString(data)), (meta, ex) -> {
+                if (ex != null) log.errorf(ex, "Send failed");
             });
         } catch (Exception e) {
-            log.errorf(e, "Failed to serialize event");
+            log.errorf(e, "Serialize failed");
         }
     }
 
-    private String extractUserId(String resourcePath) {
-        if (resourcePath == null) {
-            return null;
-        }
-
-        Matcher matcher = USER_ID_PATTERN.matcher(resourcePath);
-        return matcher.find() ? matcher.group(1) : null;
+    private String extractUserId(String path) {
+        if (path == null) return null;
+        var m = USER_ID.matcher(path);
+        return m.find() ? m.group(1) : null;
     }
 
     @Override
     public void close() {
-
     }
 }
