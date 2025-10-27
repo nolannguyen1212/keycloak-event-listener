@@ -1,1 +1,1 @@
-org.example.event.providers.users.UserEventListenerFactory
+com.identity.event.providers.users.UserEventListenerProviderFactory
