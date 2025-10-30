@@ -33,6 +33,6 @@ public class KafkaEventProviderFactory implements EventListenerProviderFactory {
 
     @Override
     public String getId() {
-        return "kafka-events";
+        return "ext-event-kafka";
     }
 }
