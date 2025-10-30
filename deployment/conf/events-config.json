@@ -1,0 +1,16 @@
+{
+  "userEvents": [
+    "LOGIN",
+    "LOGOUT",
+    "REGISTER",
+    "UPDATE_PROFILE",
+    "UPDATE_EMAIL",
+    "VERIFY_EMAIL",
+    "RESET_PASSWORD"
+  ],
+  "adminEvents": {
+    "USER": ["CREATE", "UPDATE", "DELETE"],
+    "REALM": ["UPDATE"],
+    "CLIENT": ["CREATE", "UPDATE", "DELETE"]
+  }
+}
