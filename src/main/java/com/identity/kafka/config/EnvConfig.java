@@ -12,6 +12,10 @@ public class EnvConfig {
     public static final int RETRIES = getInt("KAFKA_RETRIES", 3);
     public static final String COMPRESSION = getEnv("KAFKA_COMPRESSION", "gzip");
 
+    public static final int MAX_BLOCK_MS = getInt("KAFKA_MAX_BLOCK_MS", 2000);
+    public static final long BUFFER_MEMORY = getLong("KAFKA_BUFFER_MEMORY", 16L * 1024 * 1024);
+    public static final int DELIVERY_TIMEOUT_MS = getInt("KAFKA_DELIVERY_TIMEOUT_MS", 120000);
+
     public static final String USER_TOPIC = getEnv("KAFKA_USER_TOPIC", "keycloak-user-events");
     public static final String ADMIN_TOPIC = getEnv("KAFKA_ADMIN_TOPIC", "keycloak-admin-events");
 
@@ -32,6 +36,15 @@ public class EnvConfig {
         try {
             String val = System.getenv(key);
             return val != null ? Integer.parseInt(val) : def;
+        } catch (Exception e) {
+            return def;
+        }
+    }
+
+    private static long getLong(String key, long def) {
+        try {
+            String val = System.getenv(key);
+            return val != null ? Long.parseLong(val) : def;
         } catch (Exception e) {
             return def;
         }

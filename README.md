@@ -8,6 +8,31 @@ Keycloak SPI (`ext-event-kafka`) that forwards user and admin events to Kafka as
 - User events → `KAFKA_USER_TOPIC`, keyed by user id (fallback: realm id).
 - Admin events → `KAFKA_ADMIN_TOPIC`, keyed by realm id.
 - Shared singleton producer; send failures are logged, never thrown.
+- One-way, event-driven push (not a full sync) — no backfill, no retry queue beyond Kafka's own producer retries.
+
+## Producer send flow
+
+`send()` runs on Keycloak's own request thread and can block it if Kafka is unreachable.
+
+```mermaid
+flowchart TD
+    EV["Keycloak event"]
+    T["send(record)"]
+    Q{"Buffer ready?"}
+    FAST["return"]
+    BLOCK["block ≤ MAX_BLOCK_MS"]
+    R{"resolved?"}
+    TO["timeout, logged"]
+    BG["broker send"]
+
+    EV --> T --> Q
+    Q -- yes --> FAST --> BG
+    Q -- no --> BLOCK --> R
+    R -- yes --> FAST
+    R -- no --> TO
+```
+
+`KAFKA_MAX_BLOCK_MS` (default `2000`) keeps that stall short instead of the library's 60s default.
 
 ## Event filter (`events-config.json`)
 
@@ -33,6 +58,9 @@ Loaded from classpath (`KAFKA_CONFIG_FILE`, default `events-config.json`). Value
 | `KAFKA_ACKS` | `all` |
 | `KAFKA_RETRIES` | `3` |
 | `KAFKA_COMPRESSION` | `gzip` |
+| `KAFKA_MAX_BLOCK_MS` | `2000` |
+| `KAFKA_BUFFER_MEMORY` | `16777216` (16MB) |
+| `KAFKA_DELIVERY_TIMEOUT_MS` | `120000` |
 | `KAFKA_USER_TOPIC` | `keycloak-user-events` |
 | `KAFKA_ADMIN_TOPIC` | `keycloak-admin-events` |
 | `KAFKA_SECURITY_PROTOCOL` | `PLAINTEXT` |

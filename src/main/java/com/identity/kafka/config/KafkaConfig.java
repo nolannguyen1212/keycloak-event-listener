@@ -17,6 +17,9 @@ public class KafkaConfig {
         props.put(ProducerConfig.ACKS_CONFIG, EnvConfig.ACKS);
         props.put(ProducerConfig.RETRIES_CONFIG, EnvConfig.RETRIES);
         props.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, EnvConfig.COMPRESSION);
+        props.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, EnvConfig.MAX_BLOCK_MS);
+        props.put(ProducerConfig.BUFFER_MEMORY_CONFIG, EnvConfig.BUFFER_MEMORY);
+        props.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, EnvConfig.DELIVERY_TIMEOUT_MS);
 
         if (!"PLAINTEXT".equals(EnvConfig.SECURITY_PROTOCOL)) {
             props.put("security.protocol", EnvConfig.SECURITY_PROTOCOL);
